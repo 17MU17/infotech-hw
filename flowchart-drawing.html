@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作業 - 流程圖繪製</title>
+<style>
+:root{
+  --bg:#faf1ff; --navy:#131889; --blue:#343ac4; --red:#c2185b; --ink:#1d1d3a;
+  --muted:#5b5b78; --line:#d9cdee; --card:#ffffff;
+  --oval:#fbe7a1; --rect:#ffffff; --diamond:#f9cfdc; --para:#a8dfd2;
+  --font:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px}
+button{font-family:inherit;font-size:15px;cursor:pointer}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 18px;background:var(--navy);color:#fff}
+header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.5px}
+header .who{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+header .who label{font-size:14px;opacity:.9}
+header select,header input{font:inherit;font-size:15px;padding:4px 8px;border-radius:8px;border:0;min-width:0}
+header input.seat{width:60px} header input.name{width:110px}
+.app{display:grid;grid-template-columns:330px 1fr;height:calc(100% - 52px);min-height:0}
+aside{overflow:auto;padding:14px;border-right:1px solid var(--line);background:#fff}
+.qcard h2{font-size:17px;margin:0 0 6px;color:var(--navy)}
+.qcard ol{margin:6px 0 0;padding-left:22px;line-height:1.65;font-size:15px}
+.qcard ol ul{list-style:none;padding-left:4px;margin:0}
+.qcard .tip{font-size:13px;color:var(--muted);margin:4px 0 0}
+.qcard b.y{color:#1a7f5a} .qcard b.n{color:var(--red)}
+.palette{margin-top:14px;border-top:2px dashed var(--line);padding-top:10px}
+.palette h3{font-size:15px;margin:0 0 8px;color:var(--navy)}
+.pitem{display:flex;align-items:center;gap:10px;padding:6px 8px;margin-bottom:6px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:grab;user-select:none;touch-action:none}
+.pitem:hover{border-color:var(--blue)}
+.pitem svg{flex:none}
+.pitem span{font-size:14px;line-height:1.3}
+.help{font-size:13px;color:var(--muted);line-height:1.6;margin-top:10px;background:#f6f3fb;border-radius:10px;padding:8px 10px}
+.help b{color:var(--ink)}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);min-height:52px}
+.toolbar button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:5px 12px}
+.toolbar button:hover{border-color:var(--blue)}
+.toolbar button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.toolbar button.go{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.toolbar button:disabled{opacity:.4;cursor:default}
+.toolbar .sep{width:1px;height:26px;background:var(--line);margin:0 2px}
+.toolbar .ctx{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.toolbar .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.msg{padding:6px 14px;font-size:15px;min-height:0}
+.msg:empty{display:none}
+.msg.ok{background:#e3f6ee;color:#11603f}.msg.warn{background:#fff3d6;color:#7a5200}.msg.bad{background:#fde4ec;color:#8a1240}
+.board{flex:1;overflow:auto;position:relative;min-height:0}
+#canvas{display:block;background:#fff;background-image:radial-gradient(#e6def3 1.2px,transparent 1.2px);background-size:20px 20px;touch-action:none;user-select:none;margin:12px;border-radius:14px;box-shadow:0 1px 4px rgba(19,24,137,.12)}
+.node{cursor:move}
+.node text{pointer-events:none;font-family:var(--font)}
+.node.sel .shape{stroke:var(--red);stroke-width:4}
+.port{fill:#fff;stroke:var(--blue);stroke-width:2.5;cursor:crosshair;opacity:0}
+.node:hover .port,.node.sel .port,svg.connecting .port{opacity:1}
+.port:hover{fill:var(--blue)}
+.edge path.vis{fill:none;stroke:#2b2b40;stroke-width:2.6}
+.edge path.hit{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}
+.edge.sel path.vis{stroke:var(--red);stroke-width:3.5}
+.edge text{font-family:var(--font);font-weight:700;font-size:17px;pointer-events:none}
+.popup{position:fixed;z-index:20;background:#fff;border:2px solid var(--blue);border-radius:14px;box-shadow:0 8px 28px rgba(19,24,137,.25);padding:10px;max-width:300px}
+.popup h4{margin:0 0 8px;font-size:15px;color:var(--navy)}
+.popup .opts{display:flex;flex-wrap:wrap;gap:6px}
+.popup .opts button{border:2px solid var(--line);background:#faf7ff;border-radius:10px;padding:5px 10px;font-size:15px}
+.popup .opts button:hover{border-color:var(--blue);background:#eef0ff}
+.popup .cancel{margin-top:8px;border:0;background:none;color:var(--muted);text-decoration:underline;font-size:13px;padding:0}
+.ghost{position:fixed;pointer-events:none;z-index:30;opacity:.85}
+.modal-bg{position:fixed;inset:0;background:rgba(20,16,50,.45);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:92vh;overflow:auto;padding:18px 20px}
+.modal h3{margin:0 0 10px;color:var(--navy)}
+.modal textarea{width:100%;font-family:ui-monospace,Consolas,monospace;font-size:13px;border:2px solid var(--line);border-radius:10px;padding:8px}
+.modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.modal .row button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:6px 14px}
+.modal .row button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}.board{min-height:70vh}}
+</style>
+</head>
+<body>
+<div id="studentApp">
+<header>
+  <h1>作業 8｜畫流程圖：搭公車</h1>
+  <div class="who">
+    <label for="cls">班級</label>
+    <select id="cls"><option value="">選擇</option></select>
+    <label for="seat">座號</label><input id="seat" class="seat" inputmode="numeric" maxlength="2">
+    <label for="name">姓名</label><input id="name" class="name" maxlength="10">
+  </div>
+</header>
+<div class="app">
+  <aside>
+    <div class="qcard">
+      <h2>題目：請把下面的步驟畫成流程圖</h2>
+      <ol>
+        <li>走到公車站牌。</li>
+        <li>看看來的是哪一班公車。</li>
+        <li>判斷：是我要搭的公車嗎？
+          <ul><li><b class="n">否</b> → 繼續等下一班，然後回到第 2 步再看一次。</li>
+              <li><b class="y">是</b> → 到第 4 步。</li></ul></li>
+        <li>上車，刷悠遊卡。</li>
+        <li>判斷：有空位嗎？
+          <ul><li><b class="y">是</b> → 坐下。</li>
+              <li><b class="n">否</b> → 拉好拉環站著。</li></ul></li>
+        <li>到站下車。</li>
+      </ol>
+      <p class="tip">別忘了流程圖的「開始」和「結束」。</p>
+    </div>
+    <div class="palette">
+      <h3>零件盒（拖到右邊的畫布上）</h3>
+      <div class="pitem" data-type="oval"><svg width="62" height="34"><rect x="2" y="3" width="58" height="28" rx="14" fill="#fbe7a1" stroke="#131889" stroke-width="2"/></svg><span>橢圓<br>開始／結束</span></div>
+      <div class="pitem" data-type="rect"><svg width="62" height="34"><rect x="3" y="4" width="56" height="26" rx="3" fill="#fff" stroke="#131889" stroke-width="2"/></svg><span>長方形<br>處理（做一件事）</span></div>
+      <div class="pitem" data-type="diamond"><svg width="62" height="38"><polygon points="31,2 60,19 31,36 2,19" fill="#f9cfdc" stroke="#131889" stroke-width="2"/></svg><span>菱形<br>決策（判斷）</span></div>
+      <div class="pitem" data-type="para"><svg width="62" height="34"><polygon points="14,4 60,4 48,30 2,30" fill="#a8dfd2" stroke="#131889" stroke-width="2"/></svg><span>平行四邊形<br>輸入／輸出</span></div>
+    </div>
+    <div class="help">
+      <b>怎麼畫？</b><br>
+      ① 把圖形<b>拖</b>到畫布，選這一格要寫的步驟（每個步驟只要用一次）。<br>
+      ② 滑鼠移到圖形上會出現<b>小圓點</b>，從小圓點<b>拉</b>到另一個圖形，就會畫出箭頭。<br>
+      ③ 從菱形拉出來的箭頭，要選「是」或「否」。<br>
+      ④ 點一下圖形或箭頭可以修改、刪除（也可以按 Delete 鍵）。<br>
+      ⑤ 畫完按「檢查」，再按「完成，下載圖片」，把圖片上傳到 Classroom。
+    </div>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <button id="undoBtn" title="Ctrl+Z">↶ 復原</button>
+      <button id="clearBtn">清空重畫</button>
+      <span class="sep"></span>
+      <div class="ctx" id="ctx">點一下圖形或箭頭可以修改</div>
+      <div class="right">
+        <button id="checkBtn" class="primary">檢查</button>
+        <button id="doneBtn" class="go">完成，下載圖片</button>
+      </div>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="board" id="board">
+      <svg id="canvas" width="1000" height="1250" viewBox="0 0 1000 1250">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2b2b40"/></marker>
+          <marker id="arrowSel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2185b"/></marker>
+        </defs>
+        <g id="edges"></g><g id="nodes"></g><g id="temp"></g>
+      </svg>
+    </div>
+  </main>
+</div>
+</div>
+
+<script>
+/* ====== 老師可調整的設定 ====== */
+const MAX_CHECKS = 3;        // 「檢查」可以按幾次；0 = 不限次數
+const HINT = 'count';        // 'count' 只說還有幾項沒過；'items' 會列出是哪幾項
+const CLASSES = ['701','702','703','704','705','706','707','708','709','710','711','712','713','714','715'];
+/* ============================ */
+
+const STORE_KEY = 'hw8-bus-v1';
+const PHRASES = [
+  {k:'S', t:'開始'}, {k:'p1', t:'走到公車站牌'}, {k:'p2', t:'看看來的是哪一班公車'},
+  {k:'d1', t:'是我要搭的公車嗎？'}, {k:'p3', t:'繼續等下一班'}, {k:'p4', t:'上車，刷悠遊卡'},
+  {k:'d2', t:'有空位嗎？'}, {k:'p5', t:'坐下'}, {k:'p6', t:'拉好拉環站著'}, {k:'p7', t:'到站下車'}, {k:'E', t:'結束'}
+];
+const TEXT = Object.fromEntries(PHRASES.map(p=>[p.k,p.t]));
+const SHUFFLED = PHRASES.slice(); for (let i=SHUFFLED.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [SHUFFLED[i],SHUFFLED[j]]=[SHUFFLED[j],SHUFFLED[i]]; }
+const TYPES = ['oval','rect','diamond','para'];
+const TYPE_NAME = {oval:'橢圓',rect:'長方形',diamond:'菱形',para:'平行四邊形'};
+const SIZE = {oval:[170,58], rect:[210,62], diamond:[250,108], para:[220,62]};
+const FILL = {oval:'#fbe7a1', rect:'#ffffff', diamond:'#f9cfdc', para:'#a8dfd2'};
+const ITEM_NAMES = ['① 開始、結束','② 處理','③ 決策','④ 是／否','⑤ 重複','⑥ 順序與箭頭'];
+const ITEM_PTS = [6,6,6,7,7,7];
+const DIRS = {top:[0,-1], bottom:[0,1], left:[-1,0], right:[1,0]};
+const NS = 'http://www.w3.org/2000/svg';
+
+/* ---------- grading (used by the 檢查 button) ---------- */
+function grade(st){
+  const cnt = {}; st.nodes.forEach(n=>cnt[n.k]=(cnt[n.k]||0)+1);
+  const has = k => !!cnt[k];
+  const isT = (k,...t) => has(k) && st.nodes.filter(n=>n.k===k).every(n=>t.includes(n.type));
+  const noDup = Object.values(cnt).every(c=>c===1);
+  const id2k = {}; st.nodes.forEach(n=>id2k[n.id]=n.k);
+  const E = st.edges.map(e=>({a:id2k[e.from], b:id2k[e.to], l:e.label||''}));
+  const edge = (a,b) => E.find(e=>e.a===a && e.b===b);
+  const items = [];
+  // ① start/end
+  items.push(cnt.S===1 && cnt.E===1 && isT('S','oval') && isT('E','oval'));
+  // ② process
+  items.push(['p1','p2','p3','p5','p6','p7'].every(k=>isT(k,'rect')) && isT('p4','rect','para'));
+  // ③ decision
+  items.push(isT('d1','diamond') && isT('d2','diamond'));
+  // ④ yes/no labelled correctly on both diamonds
+  const outs = k => E.filter(e=>e.a===k);
+  const yn = (k, yesTo, noTos) => {
+    const o = outs(k); if (o.length!==2) return false;
+    const y = o.find(e=>e.l==='是'), n = o.find(e=>e.l==='否');
+    return !!y && !!n && y.b===yesTo && noTos.includes(n.b);
+  };
+  items.push(has('d1') && has('d2') && yn('d1','p4',['p3']) && yn('d2','p5',['p6']));
+  // ⑤ loop: 否 → 繼續等下一班 → back to 看看 / 判斷
+  items.push(!!edge('d1','p3') && (!!edge('p3','p2') || !!edge('p3','d1')));
+  // ⑥ order & arrows
+  const need = [['S','p1'],['p1','p2'],['p2','d1'],['d1','p4'],['p4','d2'],['d2','p5'],['d2','p6'],['p5','p7'],['p6','p7'],['p7','E']];
+  const allowed = need.concat([['d1','p3'],['p3','p2'],['p3','d1']]);
+  const allNodes = PHRASES.every(p=>has(p.k));
+  const needOK = need.every(([a,b])=>edge(a,b));
+  const noExtra = E.every(e=>allowed.some(([a,b])=>a===e.a&&b===e.b));
+  const loopOnce = !(edge('p3','p2') && edge('p3','d1'));
+  items.push(allNodes && noDup && needOK && noExtra && loopOnce);
+  const drew = st.nodes.length>0;
+  const score = drew ? 60 + items.reduce((s,ok,i)=>s+(ok?ITEM_PTS[i]:0),0) : 0;
+  return {items, score, drew};
+}
+
+/* ---------- geometry ---------- */
+function portPos(n, p){
+  const [w,h] = SIZE[n.type];
+  let x=n.x, y=n.y;
+  if (p==='top') y-=h/2; else if (p==='bottom') y+=h/2;
+  else if (p==='left') x-= (n.type==='para'? w/2-12 : w/2);
+  else if (p==='right') x+= (n.type==='para'? w/2-12 : w/2);
+  return [x,y];
+}
+function route(s, sd, e, ed){
+  const G=26;
+  const [sx,sy]=DIRS[sd], [ex,ey]=DIRS[ed];
+  const s1=[s[0]+sx*G, s[1]+sy*G], e1=[e[0]+ex*G, e[1]+ey*G];
+  const pts=[s,s1];
+  const sh = sx!==0, eh = ex!==0;
+  if (sh && eh){
+    if (sx===ex){ const x = sx>0? Math.max(s1[0],e1[0]) : Math.min(s1[0],e1[0]); pts.push([x,s1[1]],[x,e1[1]]); }
+    else if ((e1[0]-s1[0])*sx >= 0){ const mx=(s1[0]+e1[0])/2; pts.push([mx,s1[1]],[mx,e1[1]]); }
+    else { const my=(s1[1]+e1[1])/2; pts.push([s1[0],my],[e1[0],my]); }
+  } else if (!sh && !eh){
+    if (sy===ey){ const y = sy>0? Math.max(s1[1],e1[1]) : Math.min(s1[1],e1[1]); pts.push([s1[0],y],[e1[0],y]); }
+    else if ((e1[1]-s1[1])*sy >= 0){ const my=(s1[1]+e1[1])/2; pts.push([s1[0],my],[e1[0],my]); }
+    else { const mx=(s1[0]+e1[0])/2; pts.push([mx,s1[1]],[mx,e1[1]]); }
+  } else if (sh){
+    const c=[e1[0], s1[1]];
+    if ((c[0]-s1[0])*sx>=-G && (e1[1]-c[1])*(-ey)>=-G) pts.push(c); else pts.push([s1[0],e1[1]]);
+  } else {
+    const c=[s1[0], e1[1]];
+    if ((c[1]-s1[1])*sy>=-G && (e1[0]-c[0])*(-ex)>=-G) pts.push(c); else pts.push([e1[0],s1[1]]);
+  }
+  pts.push(e1, e);
+  // drop duplicate / collinear points
+  const out=[pts[0]];
+  for (let i=1;i<pts.length;i++){
+    const p=pts[i], q=out[out.length-1];
+    if (Math.abs(p[0]-q[0])<0.5 && Math.abs(p[1]-q[1])<0.5) continue;
+    if (out.length>=2){ const r=out[out.length-2];
+      if ((Math.abs(r[0]-q[0])<0.5&&Math.abs(q[0]-p[0])<0.5)||(Math.abs(r[1]-q[1])<0.5&&Math.abs(q[1]-p[1])<0.5)){ out[out.length-1]=p; continue; } }
+    out.push(p);
+  }
+  return out;
+}
+const pathD = pts => 'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+
+/* ---------- rendering (canvas and downloaded image) ---------- */
+function el(tag, attrs, parent){ const e=document.createElementNS(NS,tag); for (const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; }
+function shapeEl(type, w, h, g){
+  const st={fill:FILL[type], stroke:'#131889','stroke-width':2.5, class:'shape'};
+  if (type==='oval') return el('rect',{...st,x:-w/2,y:-h/2,width:w,height:h,rx:h/2},g);
+  if (type==='rect') return el('rect',{...st,x:-w/2,y:-h/2,width:w,height:h,rx:4},g);
+  if (type==='diamond') return el('polygon',{...st,points:`0,${-h/2} ${w/2},0 0,${h/2} ${-w/2},0`},g);
+  return el('polygon',{...st,points:`${-w/2+24},${-h/2} ${w/2},${-h/2} ${w/2-24},${h/2} ${-w/2},${h/2}`},g);
+}
+function drawState(svg, st, opts={}){
+  const gE=svg.querySelector('#edges')||svg.querySelector('.gE'), gN=svg.querySelector('#nodes')||svg.querySelector('.gN');
+  gE.innerHTML=''; gN.innerHTML='';
+  const byId={}; st.nodes.forEach(n=>byId[n.id]=n);
+  st.edges.forEach(e=>{
+    const a=byId[e.from], b=byId[e.to]; if(!a||!b) return;
+    const pts=route(portPos(a,e.fp), e.fp, portPos(b,e.tp), e.tp);
+    const g=el('g',{class:'edge'+(opts.sel===e.id?' sel':''),'data-id':e.id},gE);
+    el('path',{class:'hit',d:pathD(pts)},g);
+    el('path',{class:'vis',d:pathD(pts),'marker-end':opts.sel===e.id?'url(#arrowSel)':`url(#${opts.marker||'arrow'})`},g);
+    if (e.label){
+      const [dx,dy]=DIRS[e.fp]; const p=pts[0];
+      const lx = p[0] + dx*24 + (dy!==0? 26:0), ly = p[1] + dy*22 + (dx!==0? -16:0);
+      el('rect',{x:lx-14,y:ly-14,width:28,height:26,rx:6,fill:'#fff',stroke:e.label==='是'?'#1a7f5a':'#c2185b','stroke-width':1.5},g);
+      const t=el('text',{x:lx,y:ly+6,'text-anchor':'middle',fill:e.label==='是'?'#1a7f5a':'#c2185b'},g); t.textContent=e.label;
+    }
+  });
+  st.nodes.forEach(n=>{
+    const [w,h]=SIZE[n.type];
+    const g=el('g',{class:'node'+(opts.sel===n.id?' sel':''),'data-id':n.id,transform:`translate(${n.x},${n.y})`},gN);
+    shapeEl(n.type,w,h,g);
+    const t=el('text',{x:0,y:6,'text-anchor':'middle','font-size':n.type==='diamond'?17:18,fill:'#1d1d3a','font-weight':(n.k==='S'||n.k==='E')?700:400},g);
+    t.textContent=TEXT[n.k]||'';
+    if (opts.ports){
+      ['top','right','bottom','left'].forEach(p=>{ const [px,py]=portPos({...n,x:0,y:0},p); el('circle',{class:'port',cx:px,cy:py,r:8,'data-port':p},g); });
+    }
+  });
+}
+
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+/* ================= STUDENT MODE ================= */
+{
+const svg=document.getElementById('canvas');
+const state={nodes:[],edges:[]};
+let sel=null, checks=0, uid=1, history=[];
+const $=id=>document.getElementById(id);
+CLASSES.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('cls').appendChild(o); });
+
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({state,checks,who:who()})); }catch(e){} }
+function load(){
+  try{ const d=JSON.parse(localStorage.getItem(STORE_KEY)||'null'); if(!d) return;
+    state.nodes=d.state.nodes||[]; state.edges=d.state.edges||[]; checks=d.checks||0;
+    if(d.who){ $('cls').value=d.who.c||''; $('seat').value=d.who.s||''; $('name').value=d.who.n||''; }
+    uid=1+Math.max(0,...state.nodes.map(n=>+String(n.id).slice(1)||0),...state.edges.map(e=>+String(e.id).slice(1)||0));
+  }catch(e){}
+}
+function who(){ return {c:$('cls').value, s:$('seat').value.trim(), n:$('name').value.trim()}; }
+['cls','seat','name'].forEach(id=>$(id).addEventListener('input',save));
+function snapshot(){ history.push(JSON.stringify(state)); if(history.length>60) history.shift(); }
+function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); state.nodes=s.nodes; state.edges=s.edges; sel=null; render(); save(); }
+function msg(t, kind){ const m=$('msg'); m.textContent=t||''; m.className='msg '+(kind||''); }
+
+function render(){ drawState(svg,state,{ports:true,sel}); renderCtx(); updateCheckBtn(); }
+function updateCheckBtn(){
+  const b=$('checkBtn');
+  b.textContent = MAX_CHECKS>0 ? `檢查（剩 ${Math.max(0,MAX_CHECKS-checks)} 次）` : '檢查';
+  b.disabled = MAX_CHECKS>0 && checks>=MAX_CHECKS;
+}
+function renderCtx(){
+  const c=$('ctx'); c.innerHTML='';
+  const btn=(label,fn)=>{ const b=document.createElement('button'); b.textContent=label; b.onclick=fn; c.appendChild(b); return b; };
+  const node=state.nodes.find(n=>n.id===sel), edge=state.edges.find(e=>e.id===sel);
+  if (node){
+    c.append('選取：「'+TEXT[node.k]+'」　換成：');
+    TYPES.forEach(t=>{ const b=btn(TYPE_NAME[t],()=>{ if(node.type===t) return; snapshot(); node.type=t; render(); save(); }); if(node.type===t) b.disabled=true; });
+    btn('改文字',()=>{ const r=svg.querySelector(`.node[data-id="${node.id}"]`).getBoundingClientRect(); chooseText(r.right+8,r.top,node,false); });
+    btn('🗑 刪除',delSel);
+  } else if (edge){
+    const from=state.nodes.find(n=>n.id===edge.from);
+    c.append('選取：箭頭　');
+    if (from && from.type==='diamond'){
+      btn('標「是」',()=>setLabel(edge,'是')); btn('標「否」',()=>setLabel(edge,'否')); btn('不標',()=>setLabel(edge,''));
+    }
+    btn('🗑 刪除',delSel);
+  } else c.textContent='點一下圖形或箭頭可以修改';
+}
+function setLabel(e,l){ snapshot(); e.label=l; render(); save(); }
+function delSel(){
+  if(!sel) return; snapshot();
+  state.edges=state.edges.filter(e=>e.id!==sel && e.from!==sel && e.to!==sel);
+  state.nodes=state.nodes.filter(n=>n.id!==sel);
+  sel=null; render(); save();
+}
+
+function svgPt(cx,cy){ const p=svg.createSVGPoint(); p.x=cx; p.y=cy; const r=p.matrixTransform(svg.getScreenCTM().inverse()); return [r.x,r.y]; }
+const snap=v=>Math.round(v/10)*10;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* --- popup: choose text --- */
+let popup=null;
+function closePopup(){ if(popup){ popup.remove(); popup=null; } }
+function chooseText(px,py,node,isNew){
+  closePopup();
+  popup=document.createElement('div'); popup.className='popup';
+  popup.innerHTML='<h4>這一格要寫哪一個步驟？</h4><div class="opts"></div><button class="cancel">取消</button>';
+  const opts=popup.querySelector('.opts');
+  SHUFFLED.forEach(p=>{
+    const b=document.createElement('button'); b.textContent=p.t;
+    b.onclick=()=>{ if(!isNew) snapshot(); node.k=p.k; if(isNew){ state.nodes.push(node); } sel=node.id; closePopup(); render(); save(); };
+    opts.appendChild(b);
+  });
+  popup.querySelector('.cancel').onclick=()=>{ if(isNew) history.pop(); closePopup(); render(); };
+  document.body.appendChild(popup);
+  const r=popup.getBoundingClientRect();
+  popup.style.left=clamp(px,8,innerWidth-r.width-8)+'px';
+  popup.style.top=clamp(py,8,innerHeight-r.height-8)+'px';
+}
+function chooseLabel(px,py,edge){
+  closePopup();
+  popup=document.createElement('div'); popup.className='popup';
+  popup.innerHTML='<h4>這條箭頭是「是」還是「否」？</h4><div class="opts"><button data-l="是" style="color:#1a7f5a;font-weight:700">是</button><button data-l="否" style="color:#c2185b;font-weight:700">否</button></div><button class="cancel">先不標</button>';
+  popup.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{ edge.label=b.dataset.l; closePopup(); render(); save(); });
+  popup.querySelector('.cancel').onclick=()=>{ closePopup(); };
+  document.body.appendChild(popup);
+  const r=popup.getBoundingClientRect();
+  popup.style.left=clamp(px+10,8,innerWidth-r.width-8)+'px';
+  popup.style.top=clamp(py+10,8,innerHeight-r.height-8)+'px';
+}
+document.addEventListener('pointerdown',e=>{ if(popup && !popup.contains(e.target) && !e.target.closest('.pitem')){ const c=popup.querySelector('.cancel'); c&&c.click(); } },true);
+
+/* --- palette drag --- */
+document.querySelectorAll('.pitem').forEach(it=>{
+  it.addEventListener('pointerdown',ev=>{
+    ev.preventDefault(); closePopup();
+    const type=it.dataset.type, [w,h]=SIZE[type];
+    const ghost=document.createElement('div'); ghost.className='ghost';
+    const gs=el('svg',{width:w+6,height:h+6}); const g=el('g',{transform:`translate(${w/2+3},${h/2+3})`},gs); shapeEl(type,w,h,g);
+    ghost.appendChild(gs); document.body.appendChild(ghost);
+    const mv=e=>{ ghost.style.left=(e.clientX-w/2)+'px'; ghost.style.top=(e.clientY-h/2)+'px'; };
+    mv(ev);
+    const up=e=>{
+      document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); ghost.remove();
+      const r=svg.getBoundingClientRect();
+      if (e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;
+      const [x,y]=svgPt(e.clientX,e.clientY);
+      snapshot();
+      const node={id:'n'+(uid++), type, k:null, x:snap(clamp(x,w/2+4,1000-w/2-4)), y:snap(clamp(y,h/2+4,1250-h/2-4))};
+      chooseText(e.clientX+20,e.clientY-20,node,true);
+    };
+    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+  });
+});
+
+/* --- canvas interactions --- */
+svg.addEventListener('pointerdown',ev=>{
+  const port=ev.target.closest('.port'), nodeG=ev.target.closest('.node'), edgeG=ev.target.closest('.edge');
+  if (port && nodeG){ ev.preventDefault(); startConnect(ev, nodeG.dataset.id, port.dataset.port); return; }
+  if (nodeG){ ev.preventDefault(); startMove(ev, nodeG.dataset.id); return; }
+  if (edgeG){ sel=edgeG.dataset.id; render(); return; }
+  sel=null; render();
+});
+function startMove(ev,id){
+  const n=state.nodes.find(x=>x.id===id); const [w,h]=SIZE[n.type];
+  const [sx,sy]=svgPt(ev.clientX,ev.clientY); const ox=n.x-sx, oy=n.y-sy; let moved=false; const before=JSON.stringify(state);
+  sel=id; render();
+  const mv=e=>{ const [x,y]=svgPt(e.clientX,e.clientY); const nx=snap(clamp(x+ox,w/2+4,1000-w/2-4)), ny=snap(clamp(y+oy,h/2+4,1250-h/2-4));
+    if(nx!==n.x||ny!==n.y){ if(!moved){ history.push(before); moved=true; } n.x=nx; n.y=ny; drawState(svg,state,{ports:true,sel}); } };
+  const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); if(moved) save(); render(); };
+  document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+}
+function nearestPort(n,x,y){
+  let best='top',bd=1e9; ['top','right','bottom','left'].forEach(p=>{ const [px,py]=portPos(n,p); const d=(px-x)**2+(py-y)**2; if(d<bd){bd=d;best=p;} }); return best;
+}
+function startConnect(ev,id,fp){
+  const a=state.nodes.find(n=>n.id===id); const s=portPos(a,fp);
+  const tmp=document.getElementById('temp'); tmp.innerHTML='';
+  const line=el('path',{d:'',fill:'none',stroke:'#343ac4','stroke-width':2.5,'stroke-dasharray':'7 5','marker-end':'url(#arrow)','pointer-events':'none'},tmp);
+  svg.classList.add('connecting');
+  const mv=e=>{ const [x,y]=svgPt(e.clientX,e.clientY); line.setAttribute('d',`M${s[0]},${s[1]} L${x},${y}`); };
+  const up=e=>{
+    document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up);
+    svg.classList.remove('connecting'); tmp.innerHTML='';
+    const t=document.elementFromPoint(e.clientX,e.clientY); const g=t&&t.closest&&t.closest('.node');
+    if(!g || g.dataset.id===id){ return; }
+    const b=state.nodes.find(n=>n.id===g.dataset.id);
+    if(state.edges.some(x=>x.from===a.id&&x.to===b.id)){ msg('這兩個圖形之間已經有箭頭了。','warn'); return; }
+    const [x,y]=svgPt(e.clientX,e.clientY);
+    snapshot();
+    const edge={id:'e'+(uid++), from:a.id, fp, to:b.id, tp:nearestPort(b,x,y), label:''};
+    state.edges.push(edge); sel=edge.id; render(); save(); msg('');
+    if(a.type==='diamond') chooseLabel(e.clientX,e.clientY,edge);
+  };
+  document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+}
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,select,textarea')) return;
+  if((e.key==='Delete'||e.key==='Backspace') && sel){ e.preventDefault(); delSel(); }
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); }
+  if(e.key==='Escape'){ closePopup(); sel=null; render(); }
+});
+
+/* --- toolbar --- */
+$('undoBtn').onclick=undo;
+$('clearBtn').onclick=()=>confirmBox('確定要清空重畫嗎？（可以按「復原」救回來）',()=>{ snapshot(); state.nodes=[]; state.edges=[]; sel=null; render(); save(); msg(''); });
+$('checkBtn').onclick=()=>{
+  if(!state.nodes.length){ msg('畫布上還沒有東西喔！先從左邊拖圖形過來。','warn'); return; }
+  if(MAX_CHECKS>0 && checks>=MAX_CHECKS) return;
+  checks++; save(); updateCheckBtn();
+  const g=grade(state); const bad=g.items.map((ok,i)=>ok?null:ITEM_NAMES[i]).filter(Boolean);
+  const left = MAX_CHECKS>0 ? `（還可以檢查 ${MAX_CHECKS-checks} 次）` : '';
+  if(!bad.length) msg('🎉 全部正確！記得填好班級、座號、姓名，再按「完成，下載圖片」。','ok');
+  else if(HINT==='items') msg(`還有 ${bad.length} 項沒過關：${bad.join('、')}。${left}`,'bad');
+  else msg(`還有 ${bad.length} 個檢查項目沒過關，對照題目再看看！${left}`,'bad');
+};
+$('doneBtn').onclick=()=>{
+  const w=who();
+  if(!w.c||!w.s||!w.n){ msg('請先在最上面填好班級、座號、姓名。','warn'); ($('cls').value?($('seat').value?$('name'):$('seat')):$('cls')).focus(); return; }
+  if(!state.nodes.length){ msg('畫布上還沒有東西喔！','warn'); return; }
+  makePNG(w, dataUrl=>showImage(w, dataUrl));
+};
+function confirmBox(text,yes){
+  const bg=document.createElement('div'); bg.className='modal-bg';
+  bg.innerHTML=`<div class="modal" style="max-width:420px"><p style="margin:0">${esc(text)}</p><div class="row"><button>取消</button><button class="primary">確定</button></div></div>`;
+  document.body.appendChild(bg);
+  const [no,ok]=bg.querySelectorAll('button'); no.onclick=()=>bg.remove(); ok.onclick=()=>{ bg.remove(); yes(); };
+}
+function makePNG(w, done){
+  const xs=state.nodes.map(n=>n.x), ys=state.nodes.map(n=>n.y);
+  const minX=Math.max(0,Math.min(...xs)-170), maxX=Math.min(1000,Math.max(...xs)+170), minY=Math.max(0,Math.min(...ys)-110), maxY=Math.min(1250,Math.max(...ys)+90);
+  const W=Math.max(maxX-minX,520), H=maxY-minY+50;
+  const clone=document.createElementNS(NS,'svg');
+  clone.setAttribute('xmlns',NS); clone.setAttribute('width',W*2); clone.setAttribute('height',H*2); clone.setAttribute('viewBox',`${minX} ${minY-50} ${W} ${H}`);
+  clone.innerHTML=`<style>text{font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif}.port,.hit{display:none}.vis{fill:none;stroke:#2b2b40;stroke-width:2.6}</style><rect x="${minX}" y="${minY-50}" width="${W}" height="${H}" fill="#fff"/>`+svg.querySelector('defs').outerHTML+
+    `<text x="${minX+14}" y="${minY-18}" font-size="20" font-weight="700" fill="#131889">作業 8　${esc(w.c)} 班 ${esc(w.s)} 號 ${esc(w.n)}</text><g class="gE"></g><g class="gN"></g>`;
+  drawState(clone,state,{});
+  clone.querySelectorAll('.shape').forEach(s=>s.removeAttribute('class'));
+  const src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img=new Image();
+  img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=W*2; cv.height=H*2; const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0);
+    let url; try{ url=cv.toDataURL('image/png'); }catch(e){ url=src; } done(url); };
+  img.onerror=()=>done(src);
+  img.src=src;
+}
+function showImage(w, url){
+  const fname=`作業8_${w.c}_${w.s}_${w.n}.png`;
+  const bg=document.createElement('div'); bg.className='modal-bg';
+  bg.innerHTML=`<div class="modal" style="max-width:760px"><h3>你的流程圖</h3>
+    <p style="margin:0 0 8px">① 按「下載圖片」存到電腦 ② 到 Classroom 的作業 8 上傳這張圖片 ③ 按「繳交」。</p>
+    <p style="margin:0 0 10px;font-size:14px;color:#8a1240;background:#fde4ec;border-radius:8px;padding:6px 10px">如果按了沒有下載：在下面的圖片上按<b>滑鼠右鍵 →「另存圖片」</b>，檔名打「${esc(fname)}」。</p>
+    <div style="border:1px solid #ddd;border-radius:10px;overflow:auto;max-height:52vh;text-align:center;background:#fff"><img alt="我的流程圖" style="max-width:100%;height:auto" src="${url}"></div>
+    <div class="row"><a class="dl" href="${url}" download="${esc(fname)}" style="text-decoration:none;background:#343ac4;color:#fff;font-weight:700;border-radius:10px;padding:8px 16px">⬇ 下載圖片</a><button class="close">關閉</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('.close').onclick=()=>bg.remove();
+  msg(`下載後請到 Classroom 的作業 8 上傳「${fname}」，再按「繳交」。`,'ok');
+}
+
+load(); render();
+window.__hw8={state,grade,render};
+}
+</script>
+</body>
+</html>
