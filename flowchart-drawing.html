@@ -81,7 +81,7 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 <body>
 <div id="studentApp">
 <header>
-  <h1>作業 8｜畫流程圖：搭公車</h1>
+  <h1>作業｜畫流程圖：搭公車</h1>
   <div class="who">
     <label for="cls">班級</label>
     <select id="cls"><option value="">選擇</option></select>
@@ -487,7 +487,7 @@ function makePNG(w, done){
   const clone=document.createElementNS(NS,'svg');
   clone.setAttribute('xmlns',NS); clone.setAttribute('width',W*2); clone.setAttribute('height',H*2); clone.setAttribute('viewBox',`${minX} ${minY-50} ${W} ${H}`);
   clone.innerHTML=`<style>text{font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif}.port,.hit{display:none}.vis{fill:none;stroke:#2b2b40;stroke-width:2.6}</style><rect x="${minX}" y="${minY-50}" width="${W}" height="${H}" fill="#fff"/>`+svg.querySelector('defs').outerHTML+
-    `<text x="${minX+14}" y="${minY-18}" font-size="20" font-weight="700" fill="#131889">作業 8　${esc(w.c)} 班 ${esc(w.s)} 號 ${esc(w.n)}</text><g class="gE"></g><g class="gN"></g>`;
+    `<text x="${minX+14}" y="${minY-18}" font-size="20" font-weight="700" fill="#131889">作業　${esc(w.c)} 班 ${esc(w.s)} 號 ${esc(w.n)}</text><g class="gE"></g><g class="gN"></g>`;
   drawState(clone,state,{});
   clone.querySelectorAll('.shape').forEach(s=>s.removeAttribute('class'));
   const src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(clone));
@@ -498,16 +498,16 @@ function makePNG(w, done){
   img.src=src;
 }
 function showImage(w, url){
-  const fname=`作業8_${w.c}_${w.s}_${w.n}.png`;
+  const fname=`作業_${w.c}_${w.s}_${w.n}.png`;
   const bg=document.createElement('div'); bg.className='modal-bg';
   bg.innerHTML=`<div class="modal" style="max-width:760px"><h3>你的流程圖</h3>
-    <p style="margin:0 0 8px">① 按「下載圖片」存到電腦 ② 到 Classroom 的作業 8 上傳這張圖片 ③ 按「繳交」。</p>
+    <p style="margin:0 0 8px">① 按「下載圖片」存到電腦 ② 到 Classroom 的作業上傳這張圖片 ③ 按「繳交」。</p>
     <p style="margin:0 0 10px;font-size:14px;color:#8a1240;background:#fde4ec;border-radius:8px;padding:6px 10px">如果按了沒有下載：在下面的圖片上按<b>滑鼠右鍵 →「另存圖片」</b>，檔名打「${esc(fname)}」。</p>
     <div style="border:1px solid #ddd;border-radius:10px;overflow:auto;max-height:52vh;text-align:center;background:#fff"><img alt="我的流程圖" style="max-width:100%;height:auto" src="${url}"></div>
     <div class="row"><a class="dl" href="${url}" download="${esc(fname)}" style="text-decoration:none;background:#343ac4;color:#fff;font-weight:700;border-radius:10px;padding:8px 16px">⬇ 下載圖片</a><button class="close">關閉</button></div></div>`;
   document.body.appendChild(bg);
   bg.querySelector('.close').onclick=()=>bg.remove();
-  msg(`下載後請到 Classroom 的作業 8 上傳「${fname}」，再按「繳交」。`,'ok');
+  msg(`下載後請到 Classroom 的作業上傳「${fname}」，再按「繳交」。`,'ok');
 }
 
 load(); render();
