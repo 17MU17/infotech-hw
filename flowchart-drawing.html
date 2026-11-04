@@ -21,7 +21,9 @@ header .who{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:w
 header .who label{font-size:14px;opacity:.9}
 header select,header input{font:inherit;font-size:15px;padding:4px 8px;border-radius:8px;border:0;min-width:0}
 header input.seat{width:60px} header input.name{width:110px}
-.app{display:grid;grid-template-columns:330px 1fr;height:calc(100% - 52px);min-height:0}
+#studentApp{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+header{flex:none}
+.app{flex:1;display:grid;grid-template-columns:330px 1fr;min-height:0}
 aside{overflow:auto;padding:14px;border-right:1px solid var(--line);background:#fff}
 .qcard h2{font-size:17px;margin:0 0 6px;color:var(--navy)}
 .qcard ol{margin:6px 0 0;padding-left:22px;line-height:1.65;font-size:15px}
@@ -76,7 +78,7 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 .modal .row button{border:2px solid var(--line);background:#fff;border-radius:10px;padding:6px 14px}
 .modal .row button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
-@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}aside{border-right:0;border-bottom:1px solid var(--line)}.board{min-height:70vh}}
+@media (max-width:900px){#studentApp{height:auto;overflow:visible}.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}.board{min-height:70vh}}
 </style>
 </head>
 <body>
@@ -227,10 +229,9 @@ function hints(st){
   PHRASES.forEach(p=>{ if(cnt[p.k]>1) out.push(`${Q(p.k)}出現了 ${cnt[p.k]} 次，每個步驟只要放一次，把多的刪掉。`); });
   // 2. wrong shapes
   const want = k => (k==='S'||k==='E') ? ['oval'] : (k==='d1'||k==='d2') ? ['diamond'] : k==='p4' ? ['rect','para'] : ['rect'];
-  const why = {oval:'開始和結束要用「橢圓」', diamond:'這是一個判斷（問句），要用「菱形」', rect:'這是做一件事，要用「長方形」'};
   const shapeDone={};
   st.nodes.forEach(n=>{ if(!n.k||shapeDone[n.k]) return; const w=want(n.k);
-    if(!w.includes(n.type)){ shapeDone[n.k]=1; out.push(`${Q(n.k)}的形狀不對：${why[w[0]]}。`); } });
+    if(!w.includes(n.type)){ shapeDone[n.k]=1; out.push(`${Q(n.k)}的形狀不對，對照零件盒的說明再想想看。`); } });
   // 3. boxes with no arrows at all
   st.nodes.forEach(n=>{ if(n.k && !st.edges.some(e=>e.from===n.id||e.to===n.id)) out.push(`${Q(n.k)}還沒有連上任何箭頭。`); });
   // 4. decisions: two arrows, 是／否, correct targets
