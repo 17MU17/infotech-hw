@@ -48,6 +48,7 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .toolbar .right{margin-left:auto;display:flex;gap:8px;align-items:center}
 .msg{padding:6px 14px;font-size:15px;min-height:0}
 .msg:empty{display:none}
+.msg ul{margin:4px 0 2px;padding-left:22px;line-height:1.6}
 .msg.ok{background:#e3f6ee;color:#11603f}.msg.warn{background:#fff3d6;color:#7a5200}.msg.bad{background:#fde4ec;color:#8a1240}
 .board{flex:1;overflow:auto;position:relative;min-height:0}
 #canvas{display:block;background:#fff;background-image:radial-gradient(#e6def3 1.2px,transparent 1.2px);background-size:20px 20px;touch-action:none;user-select:none;margin:12px;border-radius:14px;box-shadow:0 1px 4px rgba(19,24,137,.12)}
@@ -150,8 +151,9 @@ main{display:flex;flex-direction:column;min-width:0;min-height:0}
 
 <script>
 /* ====== 老師可調整的設定 ====== */
-const MAX_CHECKS = 3;        // 「檢查」可以按幾次；0 = 不限次數
-const HINT = 'count';        // 'count' 只說還有幾項沒過；'items' 會列出是哪幾項
+const MAX_CHECKS = 0;        // 「檢查」可以按幾次；0 = 不限次數
+const HINT = 'hints';        // 'count' 只說還有幾項沒過；'items' 列出是哪幾項；'hints' 列出具體提示
+const MAX_HINTS = 4;         // 'hints' 模式一次最多顯示幾條提示
 const CLASSES = ['701','702','703','704','705','706','707','708','709','710','711','712','713','714','715'];
 /* ============================ */
 
@@ -209,6 +211,60 @@ function grade(st){
   const drew = st.nodes.length>0;
   const score = drew ? 60 + items.reduce((s,ok,i)=>s+(ok?ITEM_PTS[i]:0),0) : 0;
   return {items, score, drew};
+}
+
+/* ---------- hints (shown when 檢查 doesn't pass) ---------- */
+function hints(st){
+  const out=[];
+  const Q = k => '「'+TEXT[k]+'」';
+  const cnt={}; st.nodes.forEach(n=>cnt[n.k]=(cnt[n.k]||0)+1);
+  const id2k={}; st.nodes.forEach(n=>id2k[n.id]=n.k);
+  const E=st.edges.map(e=>({a:id2k[e.from], b:id2k[e.to], l:e.label||''}));
+  const edge=(a,b)=>E.find(e=>e.a===a&&e.b===b);
+  // 1. missing / duplicated steps
+  const missing=PHRASES.filter(p=>!cnt[p.k]).map(p=>Q(p.k));
+  if(missing.length) out.push(`還少了這些格子：${missing.join('、')}。`);
+  PHRASES.forEach(p=>{ if(cnt[p.k]>1) out.push(`${Q(p.k)}出現了 ${cnt[p.k]} 次，每個步驟只要放一次，把多的刪掉。`); });
+  // 2. wrong shapes
+  const want = k => (k==='S'||k==='E') ? ['oval'] : (k==='d1'||k==='d2') ? ['diamond'] : k==='p4' ? ['rect','para'] : ['rect'];
+  const why = {oval:'開始和結束要用「橢圓」', diamond:'這是一個判斷（問句），要用「菱形」', rect:'這是做一件事，要用「長方形」'};
+  const shapeDone={};
+  st.nodes.forEach(n=>{ if(!n.k||shapeDone[n.k]) return; const w=want(n.k);
+    if(!w.includes(n.type)){ shapeDone[n.k]=1; out.push(`${Q(n.k)}的形狀不對：${why[w[0]]}。`); } });
+  // 3. boxes with no arrows at all
+  st.nodes.forEach(n=>{ if(n.k && !st.edges.some(e=>e.from===n.id||e.to===n.id)) out.push(`${Q(n.k)}還沒有連上任何箭頭。`); });
+  // 4. decisions: two arrows, 是／否, correct targets
+  [['d1','p4','p3'],['d2','p5','p6']].forEach(([d,yes,no])=>{
+    if(!cnt[d]) return;
+    const o=E.filter(e=>e.a===d);
+    if(o.length!==2){ out.push(`從 ${Q(d)}要拉出 2 條箭頭（一條「是」、一條「否」），現在有 ${o.length} 條。`); return; }
+    const unl=o.filter(e=>e.l!=='是'&&e.l!=='否').length;
+    if(unl){ out.push(`從 ${Q(d)}出來的箭頭有 ${unl} 條還沒標「是」或「否」（點箭頭就可以標）。`); return; }
+    if(o[0].l===o[1].l){ out.push(`從 ${Q(d)}出來的 2 條箭頭都標成「${o[0].l}」了，應該一條「是」、一條「否」。`); return; }
+    const y=o.find(e=>e.l==='是'), n=o.find(e=>e.l==='否');
+    if(y.b===no && n.b===yes) out.push(`${Q(d)}的「是」和「否」好像標反了，對照題目再看看。`);
+    else { if(y.b!==yes) out.push(`${Q(d)}回答「是」之後，下一步接錯了，題目說「是」之後要做什麼？`);
+           if(n.b!==no) out.push(`${Q(d)}回答「否」之後，下一步接錯了，題目說「否」之後要做什麼？`); }
+  });
+  // 5. loop
+  if(cnt.p3){
+    const back=E.filter(e=>e.a==='p3');
+    if(!edge('p3','p2')&&!edge('p3','d1')) out.push(`${Q('p3')}之後要回到哪裡？題目說「回到第 2 步再看一次」，要畫一條往回的箭頭。`);
+    else if(edge('p3','p2')&&edge('p3','d1')) out.push(`${Q('p3')}往回的箭頭只要一條就好。`);
+  }
+  // 6. sequence arrows (decision outs handled above)
+  const seq=[['S','p1'],['p1','p2'],['p2','d1'],['p4','d2'],['p5','p7'],['p6','p7'],['p7','E']];
+  seq.forEach(([a,b])=>{ if(cnt[a]&&cnt[b]&&!edge(a,b)){
+    out.push(edge(b,a) ? `${Q(b)}和${Q(a)}之間的箭頭方向畫反了。` : `${Q(a)}之後的下一步，好像還沒有箭頭接過去（或接錯格子了）。`); } });
+  // 7. extra arrows
+  const allowed=[['S','p1'],['p1','p2'],['p2','d1'],['d1','p4'],['d1','p3'],['p3','p2'],['p3','d1'],['p4','d2'],['d2','p5'],['d2','p6'],['p5','p7'],['p6','p7'],['p7','E']];
+  const ok=(a,b)=>allowed.some(([x,y])=>x===a&&y===b);
+  E.forEach(e=>{ if(!e.a||!e.b||ok(e.a,e.b)) return;
+    if(ok(e.b,e.a)) return; // reversed: reported above
+    if(e.a==='E') out.push(`${Q('E')}之後不應該再有箭頭了。`);
+    else if(e.b==='S') out.push(`不應該有箭頭指回${Q('S')}。`);
+    else out.push(`從 ${Q(e.a)}到${Q(e.b)}的箭頭是多出來的，對照題目想想要不要刪掉。`); });
+  return [...new Set(out)];
 }
 
 /* ---------- geometry ---------- */
@@ -314,7 +370,8 @@ function who(){ return {c:$('cls').value, s:$('seat').value.trim(), n:$('name').
 ['cls','seat','name'].forEach(id=>$(id).addEventListener('input',save));
 function snapshot(){ history.push(JSON.stringify(state)); if(history.length>60) history.shift(); }
 function undo(){ if(!history.length) return; const s=JSON.parse(history.pop()); state.nodes=s.nodes; state.edges=s.edges; sel=null; render(); save(); }
-function msg(t, kind){ const m=$('msg'); m.textContent=t||''; m.className='msg '+(kind||''); }
+function msg(t, kind, list){ const m=$('msg'); m.textContent=t||''; m.className='msg '+(kind||'');
+  if(list&&list.length){ const ul=document.createElement('ul'); list.forEach(x=>{ const li=document.createElement('li'); li.textContent=x; ul.appendChild(li); }); m.appendChild(ul); } }
 
 function render(){ drawState(svg,state,{ports:true,sel}); renderCtx(); updateCheckBtn(); }
 function updateCheckBtn(){
@@ -465,6 +522,11 @@ $('checkBtn').onclick=()=>{
   const g=grade(state); const bad=g.items.map((ok,i)=>ok?null:ITEM_NAMES[i]).filter(Boolean);
   const left = MAX_CHECKS>0 ? `（還可以檢查 ${MAX_CHECKS-checks} 次）` : '';
   if(!bad.length) msg('🎉 全部正確！記得填好班級、座號、姓名，再按「完成，下載圖片」。','ok');
+  else if(HINT==='hints'){
+    let h=hints(state); if(!h.length) h=bad.map(b=>`「${b}」這一項還沒過關，對照題目再看看。`);
+    const more=h.length>MAX_HINTS ? `（還有 ${h.length-MAX_HINTS} 條，先改好這些再按一次「檢查」）` : '';
+    msg(`還有 ${bad.length} 個檢查項目沒過關，可以從這裡開始找：${left}`,'bad',h.slice(0,MAX_HINTS).concat(more?[more]:[]));
+  }
   else if(HINT==='items') msg(`還有 ${bad.length} 項沒過關：${bad.join('、')}。${left}`,'bad');
   else msg(`還有 ${bad.length} 個檢查項目沒過關，對照題目再看看！${left}`,'bad');
 };
